@@ -6,7 +6,11 @@ from collections import defaultdict
 import requests_cache
 from tqdm import tqdm
 
-from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEPS_URL, DOWNLOADS_DIR
+from constants import (
+    BASE_DIR, EXPECTED_STATUS,
+    MAIN_DOC_URL, PEPS_URL,
+    DOWNLOADS_DIR
+)
 from configs import configure_argument_parser, configure_logging
 from exceptions import ParserFindTagException
 from outputs import control_output
