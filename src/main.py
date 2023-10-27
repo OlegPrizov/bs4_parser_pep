@@ -4,14 +4,13 @@ from urllib.parse import urljoin
 from collections import defaultdict
 
 import requests_cache
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEPS_URL, DOWNLOADS_DIR
 from configs import configure_argument_parser, configure_logging
 from exceptions import ParserFindTagException
 from outputs import control_output
-from utils import get_response, find_tag, making_soup
+from utils import find_tag, making_soup
 
 DOWNLOAD_MESSAGE = 'Архив был загружен и сохранён: {archive_path}'
 DIFFERENT_STATUSES_MESSAGE = (
@@ -21,6 +20,7 @@ DIFFERENT_STATUSES_MESSAGE = (
 )
 ARGUMENTS_MESSAGE = 'Аргументы командной строки: {args}'
 CONNECTION_ERROR_MESSAGE = 'По адресу {url} ничего не нашлось.'
+
 
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
@@ -37,7 +37,11 @@ def whats_new(session):
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         soup = making_soup(session, version_link)
-        results.append((version_link, find_tag(soup, 'h1').text, find_tag(soup, 'dl').text.replace('\n', ' ')))
+        results.append((
+            version_link,
+            find_tag(soup, 'h1').text,
+            find_tag(soup, 'dl').text.replace('\n', ' ')
+        ))
     return results
 
 
@@ -102,7 +106,11 @@ def pep(session):
                 find_tag(tr_tag, 'a')['href']
             )
             soup = making_soup(session, link)
-            dl_tag = find_tag(soup, 'dl', {'class': 'rfc2822 field-list simple'})
+            dl_tag = find_tag(
+                soup,
+                'dl',
+                {'class': 'rfc2822 field-list simple'}
+            )
             status = dl_tag.select_one(':-soup-contains("Status") + dd').string
             if status not in pre_status:
                 log_messages.append(
@@ -147,6 +155,7 @@ def main():
     except Exception as exception:
         logging.exception(exception)
     logging.info('Парсер завершил работу.')
+
 
 if __name__ == '__main__':
     main()
