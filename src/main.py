@@ -16,6 +16,7 @@ from exceptions import ParserFindTagException
 from outputs import control_output
 from utils import find_tag, making_soup
 
+START_MESSAGE = 'Парсер запущен'
 DOWNLOAD_MESSAGE = 'Архив был загружен и сохранён: {archive_path}'
 DIFFERENT_STATUSES_MESSAGE = (
     'Несовпадающий статус: {link}\n'
@@ -24,6 +25,7 @@ DIFFERENT_STATUSES_MESSAGE = (
 )
 ARGUMENTS_MESSAGE = 'Аргументы командной строки: {args}'
 CONNECTION_ERROR_MESSAGE = 'По адресу {url} ничего не нашлось.'
+NOT_FOUND_MESSAGE = 'Ничего не нашлось'
 
 
 def whats_new(session):
@@ -36,16 +38,23 @@ def whats_new(session):
         attrs={'class': 'toctree-l1'}
     )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
+    log_messages = []
     for section in tqdm(sections_by_python):
-        version_a_tag = find_tag(section, 'a')
-        href = version_a_tag['href']
-        version_link = urljoin(whats_new_url, href)
-        soup = making_soup(session, version_link)
-        results.append((
-            version_link,
-            find_tag(soup, 'h1').text,
-            find_tag(soup, 'dl').text.replace('\n', ' ')
-        ))
+        try:
+            version_a_tag = find_tag(section, 'a')
+            href = version_a_tag['href']
+            version_link = urljoin(whats_new_url, href)
+            soup = making_soup(session, version_link)
+            results.append((
+                version_link,
+                find_tag(soup, 'h1').text,
+                find_tag(soup, 'dl').text.replace('\n', ' ')
+            ))
+        except ConnectionError:
+            log_messages.append(
+                CONNECTION_ERROR_MESSAGE.format(url=version_link)
+            )
+    list(map(logging.info, log_messages))
     return results
 
 
@@ -58,7 +67,7 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
     else:
-        raise ParserFindTagException('Ничего не нашлось')
+        raise ParserFindTagException(NOT_FOUND_MESSAGE)
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
@@ -127,11 +136,11 @@ def pep(session):
         except ConnectionError:
             log_messages.append(CONNECTION_ERROR_MESSAGE.format(url=link))
     list(map(logging.info, log_messages))
-    return (
-        [('Статус', 'Количество')]
-        + sorted(results.items())
-        + [('Всего', sum(results.values()))]
-    )
+    return [
+        ('Статус', 'Количество'),
+        *results.items(),
+        ('Всего', sum(results.values()))
+    ]
 
 
 MODE_TO_FUNCTION = {
@@ -145,7 +154,7 @@ MODE_TO_FUNCTION = {
 def main():
     try:
         configure_logging()
-        logging.info('Парсер запущен!')
+        logging.info(START_MESSAGE)
         arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
         args = arg_parser.parse_args()
         logging.info(ARGUMENTS_MESSAGE.format(args=args))

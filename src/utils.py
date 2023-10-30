@@ -3,7 +3,10 @@ from requests import RequestException
 
 from exceptions import ParserFindTagException
 
-ERROR_MESSAGE_RESPONSE = 'Возникла ошибка при загрузке страницы {url}'
+ERROR_MESSAGE_RESPONSE = (
+    'Возникла ошибка при загрузке страницы {url}. '
+    'Ошибка: {error}'
+)
 ERROR_MESSAGE_TAG = 'Не найден тег {tag} {attrs}'
 
 
@@ -12,8 +15,10 @@ def get_response(session, url, encoding='utf-8'):
         response = session.get(url)
         response.encoding = encoding
         return response
-    except RequestException:
-        raise ConnectionError(ERROR_MESSAGE_TAG.format(url=url))
+    except RequestException as error:
+        raise ConnectionError(
+            ERROR_MESSAGE_RESPONSE.format(url=url, error=error)
+        )
 
 
 def find_tag(soup, tag, attrs=None):
@@ -26,6 +31,4 @@ def find_tag(soup, tag, attrs=None):
 
 
 def making_soup(session, url, features='lxml'):
-    response = get_response(session, url)
-    response.encoding = 'utf-8'
-    return BeautifulSoup(response.text, features=features)
+    return BeautifulSoup(get_response(session, url).text, features=features)
